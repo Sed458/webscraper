@@ -1,0 +1,16 @@
+{
+  "name": "googlescreenshot",
+  "version": "1.0.0",
+  "description": "",
+  "main": "googlescreenshot.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [],
+  "author": "Sophia Danielsen <sed458@nyu.edu> (https://github.com/Sed458)",
+  "license": "MIT",
+  "dependencies": {
+    "chalk": "^4.1.0",
+    "puppeteer": "^5.2.0"
+  }
+}
