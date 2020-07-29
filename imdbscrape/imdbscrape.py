@@ -4,13 +4,10 @@ from bs4 import BeautifulSoup
 import pandas as pd
 import numpy as np
 
-headers = {"Accept-Language": "en-US, en;q=0.5"}
+from time import sleep
+from random import randint
 
-url = "https://www.imdb.com/search/title/?groups=top_1000&ref_=adv_prv"
-
-results = requests.get(url, headers=headers)
-
-soup = BeautifulSoup(results.text, "html.parser")
+headers = {"Accept-Language": "en-US,en;q=0.5"}
 
 titles = []
 years = []
@@ -20,36 +17,48 @@ metascores = []
 votes = []
 us_gross = []
 
-# Scrape Data
-movie_div = soup.find_all('div', class_='lister-item mode-advanced')
+pages = np.arange(1, 1001, 50)
 
-for container in movie_div:
-    name = container.h3.a.text
-    titles.append(name)
+for page in pages:
+    print("--- Scraping Page ", page)
+    page = requests.get("https://www.imdb.com/search/title/?groups=top_1000&start=" +
+                        str(page) + "&ref_=adv_nxt", headers=headers)
 
-    year = container.h3.find('span', class_='lister-item-year').text
-    years.append(year)
+    soup = BeautifulSoup(page.text, 'html.parser')
 
-    runtime = container.find('span', class_='runtime').text if container.p.find(
-        'span', class_='runtime') else ''
-    time.append(runtime)
+    movie_div = soup.find_all('div', class_='lister-item mode-advanced')
 
-    imdb = float(container.strong.text)
-    imdb_ratings.append(imdb)
+    sleep(randint(2, 10))
 
-    m_score = container.find('span', class_='metascore').text if container.find(
-        'span', class_='metascore') else '-'
-    metascores.append(m_score)
+    for container in movie_div:
+        name = container.h3.a.text
 
-    nv = container.find_all('span', attrs={'name': 'nv'})
+        titles.append(name)
 
-    vote = nv[0].text
-    votes.append(vote)
+        year = container.h3.find('span', class_='lister-item-year').text
+        years.append(year)
 
-    grosses = nv[1].text if len(nv) > 1 else '-'
-    us_gross.append(grosses)
+        runtime = container.p.find('span', class_='runtime') if container.p.find(
+            'span', class_='runtime') else '-'
+        time.append(runtime)
+
+        imdb = float(container.strong.text)
+        imdb_ratings.append(imdb)
+
+        m_score = container.find('span', class_='metascore').text if container.find(
+            'span', class_='metascore') else '-'
+        metascores.append(m_score)
+
+        nv = container.find_all('span', attrs={'name': 'nv'})
+
+        vote = nv[0].text
+        votes.append(vote)
+
+        grosses = nv[1].text if len(nv) > 1 else '-'
+        us_gross.append(grosses)
 
 # DataFrame
+print("Creating DataFrame")
 movies = pd.DataFrame({
     'movie': titles,
     'year': years,
@@ -61,12 +70,22 @@ movies = pd.DataFrame({
 })
 
 # Data Cleaning
+print("Data Cleaning")
 movies['year'] = movies['year'].str.extract('(\d+)').astype(int)
-movies['timeMin'] = movies['timeMin'].str.extract('(\d+)').astype(int)
-movies['metascore'] = pd.to_numeric(movies['metascore'], errors='coerce')
+
+movies['timeMin'] = movies['timeMin'].str.extract('(\d+)')
+movies['timeMin'] = pd.to_numeric(movies['timeMin'], errors='coerce')
+
 movies['votes'] = movies['votes'].str.replace(',', '').astype(int)
 
-movies['us_grossMillions'] = movies['us_grossMillions'].map(lambda x: x.lstrip('$').rstrip('M'))
-movies['us_grossMillions'] = pd.to_numeric(movies['us_grossMillions'], errors='coerce')
+movies['metascore'] = movies['metascore'].str.extract('(\d+)')
+movies['metascore'] = pd.to_numeric(movies['metascore'], errors='coerce')
+
+movies['us_grossMillions'] = movies['us_grossMillions'].map(
+    lambda x: x.lstrip('$').rstrip('M'))
+movies['us_grossMillions'] = pd.to_numeric(
+    movies['us_grossMillions'], errors='coerce')
 
 movies.to_csv('movies.csv')
+
+print(movies.isnull().sum())
